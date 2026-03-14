@@ -1,0 +1,21 @@
+{
+  "name": "beacon-point-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/web-dashboard",
+    "apps/screen-player",
+    "packages/ui",
+    "packages/database",
+    "packages/api",
+    "services/ad-distribution",
+    "services/marketplace"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm:start --workspace apps/web-dashboard\" \"npm:start --workspace services/marketplace\" \"npm:start --workspace services/ad-distribution\"",
+    "install:all": "npm install --workspaces --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0",
+    "prisma": "^6.13.0"
+  }
+}

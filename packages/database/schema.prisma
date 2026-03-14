@@ -1,0 +1,121 @@
+// Prisma schema for Beacon Point
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  role         UserRole
+  createdAt    DateTime @default(now())
+  companies    Company[] @relation("UserCompanies")
+  screens      Screen[]  @relation("ScreenOwner")
+  bookings     Booking[] @relation("AdvertiserBookings")
+}
+
+enum UserRole {
+  advertiser
+  owner
+  admin
+}
+
+model Company {
+  id         String   @id @default(uuid())
+  name       String
+  logo       String?
+  website    String?
+  owner      User     @relation("UserCompanies", fields: [ownerUserId], references: [id])
+  ownerUserId String
+  ads        Advertisement[]
+  payments   Payment[]
+}
+
+model Screen {
+  id                  String   @id @default(uuid())
+  owner               User     @relation("ScreenOwner", fields: [ownerId], references: [id])
+  ownerId             String
+  locationName        String
+  venueType           String
+  city                String
+  state               String
+  screenSize          String
+  resolution          String
+  deviceId            String
+  estimatedDailyViews Int
+  status              String
+  createdAt           DateTime @default(now())
+  listings            ScreenListing[]
+  schedules           AdSchedule[]
+  bookings            Booking[]
+}
+
+model ScreenListing {
+  id           String   @id @default(uuid())
+  screen       Screen   @relation(fields: [screenId], references: [id])
+  screenId     String
+  title        String
+  description  String
+  pricePerHour Float
+  pricePerDay  Float
+  active       Boolean  @default(true)
+}
+
+model Advertisement {
+  id             String   @id @default(uuid())
+  company        Company  @relation(fields: [companyId], references: [id])
+  companyId      String
+  title          String
+  description    String
+  mediaUrl       String
+  mediaType      String
+  durationSec    Int
+  status         String
+  createdAt      DateTime @default(now())
+  schedules      AdSchedule[]
+  bookings       Booking[]
+}
+
+model AdSchedule {
+  id              String   @id @default(uuid())
+  ad              Advertisement @relation(fields: [adId], references: [id])
+  adId            String
+  screen          Screen        @relation(fields: [screenId], references: [id])
+  screenId        String
+  startDate       DateTime
+  endDate         DateTime
+  startTime       String
+  endTime         String
+  frequencyPerHour Int
+}
+
+model Payment {
+  id             String   @id @default(uuid())
+  company        Company  @relation(fields: [companyId], references: [id])
+  companyId      String
+  amount         Float
+  status         String
+  stripePaymentId String
+  createdAt      DateTime @default(now())
+}
+
+model Booking {
+  id           String   @id @default(uuid())
+  advertiser   User     @relation("AdvertiserBookings", fields: [advertiserId], references: [id])
+  advertiserId String
+  screen       Screen   @relation(fields: [screenId], references: [id])
+  screenId     String
+  ad           Advertisement @relation(fields: [adId], references: [id])
+  adId         String
+  startDate    DateTime
+  endDate      DateTime
+  totalPrice   Float
+  status       String
+}
