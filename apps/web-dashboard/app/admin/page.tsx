@@ -1,109 +1,74 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { Container, Typography, Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, Snackbar, Alert } from "@mui/material";
+import { Container, Typography, Box, Grid, Card, CardContent } from "@mui/material";
+import FullCalendar from "@fullcalendar/react";
+import dayGridPlugin from "@fullcalendar/daygrid";
 
-export default function AdminPage() {
-  const [users, setUsers] = useState([]);
-  const [ads, setAds] = useState([]);
-  const [screens, setScreens] = useState([]);
-  const [success, setSuccess] = useState("");
-  const [error, setError] = useState("");
+export default function AdminDashboard() {
+  const [openSlots, setOpenSlots] = useState([]);
+  const [pendingAds, setPendingAds] = useState([]);
+  const [pendingPayments, setPendingPayments] = useState([]);
 
   useEffect(() => {
-    fetchData();
+    // Fetch open slots, pending ads, and payments (mock data for now)
+    setOpenSlots([
+      { title: "Lobby TV Slot", date: "2026-03-15" },
+      { title: "Conference Room Slot", date: "2026-03-16" },
+    ]);
+    setPendingAds([
+      { id: 1, name: "Ad for Product A", location: "Lobby TV" },
+      { id: 2, name: "Ad for Product B", location: "Conference Room" },
+    ]);
+    setPendingPayments([
+      { id: 1, name: "Ad for Product C", amount: "$100" },
+      { id: 2, name: "Ad for Product D", amount: "$200" },
+    ]);
   }, []);
 
-  const fetchData = async () => {
-    try {
-      const usersRes = await fetch("http://localhost:8010/users");
-      const adsRes = await fetch("http://localhost:8010/ads");
-      const screensRes = await fetch("http://localhost:8010/screens");
-      setUsers(await usersRes.json());
-      setAds(await adsRes.json());
-      setScreens(await screensRes.json());
-    } catch (err) {
-      setError("Failed to load admin data.");
-    }
-  };
-
   return (
-    <Container maxWidth="lg" sx={{ mt: 6 }}>
-      <Typography variant="h4" gutterBottom>Admin Dashboard</Typography>
+    <Container maxWidth="lg" sx={{ mt: 4 }}>
+      <Typography variant="h4" align="center" gutterBottom>
+        Admin Dashboard
+      </Typography>
+
       <Box sx={{ mb: 4 }}>
-        <Typography variant="h6">Users</Typography>
-        <TableContainer component={Paper} sx={{ mb: 2 }}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Email</TableCell>
-                <TableCell>Role</TableCell>
-                <TableCell>Created</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {users.map((u: any) => (
-                <TableRow key={u.id}>
-                  <TableCell>{u.email}</TableCell>
-                  <TableCell>{u.role}</TableCell>
-                  <TableCell>{u.created_at}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <Typography variant="h5" gutterBottom>
+          Open Slots Calendar
+        </Typography>
+        <FullCalendar plugins={[dayGridPlugin]} initialView="dayGridMonth" events={openSlots} />
       </Box>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h6">Ads</Typography>
-        <TableContainer component={Paper} sx={{ mb: 2 }}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Title</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Company</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {ads.map((a: any) => (
-                <TableRow key={a.id}>
-                  <TableCell>{a.title}</TableCell>
-                  <TableCell>{a.status}</TableCell>
-                  <TableCell>{a.company_id}</TableCell>
-                </TableRow>
+
+      <Grid container spacing={4}>
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h5" gutterBottom>
+                Pending Ads for Approval
+              </Typography>
+              {pendingAds.map((ad) => (
+                <Typography key={ad.id}>
+                  {ad.name} - {ad.location}
+                </Typography>
               ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Box>
-      <Box>
-        <Typography variant="h6">Screens</Typography>
-        <TableContainer component={Paper}>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Location</TableCell>
-                <TableCell>Venue</TableCell>
-                <TableCell>Owner</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {screens.map((s: any) => (
-                <TableRow key={s.id}>
-                  <TableCell>{s.location_name}</TableCell>
-                  <TableCell>{s.venue_type}</TableCell>
-                  <TableCell>{s.owner_id}</TableCell>
-                </TableRow>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} md={6}>
+          <Card>
+            <CardContent>
+              <Typography variant="h5" gutterBottom>
+                Pending Payments
+              </Typography>
+              {pendingPayments.map((payment) => (
+                <Typography key={payment.id}>
+                  {payment.name} - {payment.amount}
+                </Typography>
               ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Box>
-      <Snackbar open={!!success} autoHideDuration={3000} onClose={() => setSuccess("")}> 
-        <Alert severity="success">{success}</Alert>
-      </Snackbar>
-      <Snackbar open={!!error} autoHideDuration={3000} onClose={() => setError("")}> 
-        <Alert severity="error">{error}</Alert>
-      </Snackbar>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
     </Container>
   );
 }

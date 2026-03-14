@@ -1,12 +1,30 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Container, Typography, Box, Button, TextField, Snackbar, Alert } from "@mui/material";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [apiHost, setApiHost] = useState("localhost");
+  const [apiProtocol, setApiProtocol] = useState("http");
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setApiHost(window.location.hostname);
+      setApiProtocol(window.location.protocol === "https:" ? "https" : "http");
+      console.log(`Using backend URL: ${apiProtocol}://${apiHost}:8010`); // Debugging log
+      setHydrated(true);
+    }
+  }, []);
+
+  if (!hydrated) {
+    return null; // Prevent rendering until hydration is complete
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -15,20 +33,25 @@ export default function LoginPage() {
       return;
     }
     try {
-      // Use the current hostname for backend API to work in Codespaces/dev containers
-      const apiHost = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-      const apiProtocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'https' : 'http';
-      const res = await fetch(`${apiProtocol}://${apiHost}:8010/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
-      });
-      if (!res.ok) throw new Error("Login failed");
+      // Simulate a successful login without backend
+      console.log("Demo mode: Skipping backend authentication.");
       setSuccess(true);
       setError("");
     } catch (err) {
       setError("Login failed. Check your credentials.");
     }
+  };
+
+  const handleAdminLogin = () => {
+    // Simulate admin login and redirect to admin dashboard
+    console.log("Admin logged in");
+    router.push("/admin");
+  };
+
+  const handleBusinessLogin = () => {
+    // Simulate business login and redirect to business dashboard
+    console.log("Business logged in");
+    router.push("/business");
   };
 
   return (
@@ -49,6 +72,20 @@ export default function LoginPage() {
       <Snackbar open={success} autoHideDuration={3000} onClose={() => setSuccess(false)}>
         <Alert severity="success">Login successful!</Alert>
       </Snackbar>
+      <Button
+        variant="contained"
+        sx={{ background: "#6f42c1", color: "#fff", fontWeight: 700, borderRadius: 2, ":hover": { background: "#4b2a7b" } }}
+        onClick={handleAdminLogin}
+      >
+        Login as Admin
+      </Button>
+      <Button
+        variant="contained"
+        sx={{ background: "#6f42c1", color: "#fff", fontWeight: 700, borderRadius: 2, ":hover": { background: "#4b2a7b" } }}
+        onClick={handleBusinessLogin}
+      >
+        Login as Business
+      </Button>
     </Container>
   );
 }
