@@ -1,14 +1,15 @@
 import Link from "next/link";
 import { AppBar, Toolbar, Typography, Button, Box } from "@mui/material";
+import Logo from "./Logo";
 export default function Navigation() {
   // Placeholder: Assume admin if localStorage.admin === 'true'
   const isAdmin = typeof window !== 'undefined' && window.localStorage?.getItem('admin') === 'true';
   return (
     <AppBar sx={{ border: '1px solid #000'}} position="static" color="transparent" elevation={0}>
       <Toolbar>
-        <Typography variant="h5" sx={{ flexGrow: 1, fontWeight: 800, letterSpacing: -1, color: '#6f42c1' }}>
-          <Link href="/" style={{ textDecoration: 'none', color: '#ffffff' }}>Beacon Point</Link>
-        </Typography>
+        <Link href="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', flexGrow: 1 }}>
+          <Logo style={{ marginRight: 12 }} />
+        </Link>
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Button component={Link} href="/marketplace" variant="contained" sx={{
             background: 'linear-gradient(90deg, #6f42c1 0%, #24292f 100%)',
