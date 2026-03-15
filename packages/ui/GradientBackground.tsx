@@ -1,7 +1,7 @@
 import React from "react";
 import { accentColor } from "./theme";
 
-export default function GradientBackground({ children }: { children: React.ReactNode }) {
+export default function GradientBackground() {
   return (
     <div
       style={{
@@ -13,9 +13,8 @@ export default function GradientBackground({ children }: { children: React.React
         top: 0,
         left: 0,
         zIndex: -1,
+        pointerEvents: "none",
       }}
-    >
-      {children}
-    </div>
+    />
   );
 }
