@@ -18,32 +18,6 @@ export default function Navigation() {
             textTransform: 'none',
             px: 2
           }}>Marketplace</Button>
-          <Button component={Link} href="/ads" variant="outlined" sx={{
-            color: '#FFF',
-            borderColor: '#FFF',
-            borderRadius: 3,
-            fontWeight: 700,
-            textTransform: 'none',
-            px: 2
-          }}>My Ads</Button>
-          <Button component={Link} href="/screens" variant="outlined" sx={{
-            color: '#FFF',
-            borderColor: '#FFF',
-            borderRadius: 3,
-            fontWeight: 700,
-            textTransform: 'none',
-            px: 2
-          }}>My Screens</Button>
-          {isAdmin && (
-            <Button component={Link} href="/admin" variant="contained" sx={{
-              background: 'linear-gradient(90deg, #24292f 0%, #6f42c1 100%)',
-              color: '#FFF',
-              borderRadius: 3,
-              fontWeight: 700,
-              textTransform: 'none',
-              px: 2
-            }}>Admin</Button>
-          )}
           {isAdmin && (
             <Button component={Link} href="/analytics" variant="outlined" sx={{
               color: '#FFF',
