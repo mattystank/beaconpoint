@@ -49,6 +49,7 @@ POP_RETENTION_DAYS = int(os.getenv("POP_RETENTION_DAYS", "30"))
 RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "60"))
 RATE_LIMIT_MAX_REQUESTS = int(os.getenv("RATE_LIMIT_MAX_REQUESTS", "1000"))
 ALLOWED_ORIGINS = [origin.strip() for origin in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",") if origin.strip()]
+ALLOWED_ORIGIN_REGEX = os.getenv("ALLOWED_ORIGIN_REGEX", "").strip() or None
 CORS_ALLOW_CREDENTIALS = not (len(ALLOWED_ORIGINS) == 1 and ALLOWED_ORIGINS[0] == "*")
 BOOKING_ALLOWED_TRANSITIONS = {
     "draft": {"pending", "canceled"},
@@ -158,6 +159,18 @@ def hash_pairing_code(code: str) -> str:
 
 def generate_pairing_code() -> str:
     return f"{secrets.randbelow(10**6):06d}"
+
+
+def build_device_code(device_id: str) -> str:
+    # Deterministic short code derived from device id for simpler pairing UX.
+    return hashlib.sha1(device_id.encode("utf-8")).hexdigest().upper()[:6]
+
+
+def normalize_device_code(device_code: str) -> str:
+    normalized = device_code.strip().upper()
+    if len(normalized) != 6 or any(ch not in "0123456789ABCDEF" for ch in normalized):
+        raise HTTPException(status_code=400, detail="device_code must be a 6-character uppercase hex string")
+    return normalized
 
 
 def hash_refresh_token(refresh_token: str) -> str:
@@ -492,6 +505,11 @@ class DeviceBootstrapPayload(BaseModel):
     pairing_code: str
 
 
+class DeviceBootstrapSimplePayload(BaseModel):
+    device_code: str
+    pairing_code: str
+
+
 class DeviceHeartbeatPayload(BaseModel):
     playback_state: str | None = None
     last_content_hash: str | None = None
@@ -595,6 +613,7 @@ def startup() -> None:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=ALLOWED_ORIGIN_REGEX,
     allow_credentials=CORS_ALLOW_CREDENTIALS,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -998,6 +1017,7 @@ def register_device(payload: DeviceRegisterPayload, db: Session = Depends(get_db
 
     return {
         "device_id": device.id,
+        "device_code": build_device_code(device.id),
         "screen_id": device.screen_id,
         "pairing_code": pairing_code,
         "pairing_code_expires_at": device.pairing_code_expires_at.isoformat() if device.pairing_code_expires_at else None,
@@ -1425,6 +1445,51 @@ def bootstrap_device(payload: DeviceBootstrapPayload, db: Session = Depends(get_
         "device_token": token,
         "device_id": device.id,
         "screen_id": device.screen_id,
+        "sync_interval_seconds": DEVICE_SYNC_INTERVAL_SECONDS,
+    }
+
+
+@app.post("/devices/bootstrap/simple")
+def bootstrap_device_simple(payload: DeviceBootstrapSimplePayload, db: Session = Depends(get_db)):
+    device_code = normalize_device_code(payload.device_code)
+    now = datetime.datetime.utcnow()
+
+    candidates = (
+        db.query(Device)
+        .filter(Device.status == "unpaired")
+        .filter(Device.pairing_code_hash.isnot(None))
+        .filter(Device.pairing_code_expires_at.isnot(None))
+        .all()
+    )
+
+    matched_device = next(
+        (
+            row
+            for row in candidates
+            if build_device_code(row.id) == device_code
+            and row.pairing_code_expires_at is not None
+            and row.pairing_code_expires_at >= now
+        ),
+        None,
+    )
+    if matched_device is None:
+        raise HTTPException(status_code=401, detail="Invalid or expired device code")
+    if hash_pairing_code(payload.pairing_code) != matched_device.pairing_code_hash:
+        raise HTTPException(status_code=401, detail="Invalid pairing code")
+
+    matched_device.status = "active"
+    matched_device.paired_at = now
+    matched_device.pairing_code_hash = None
+    matched_device.pairing_code_expires_at = None
+    db.add(matched_device)
+    db.commit()
+
+    token = create_device_token(matched_device.id)
+    return {
+        "device_token": token,
+        "device_id": matched_device.id,
+        "device_code": build_device_code(matched_device.id),
+        "screen_id": matched_device.screen_id,
         "sync_interval_seconds": DEVICE_SYNC_INTERVAL_SECONDS,
     }
 

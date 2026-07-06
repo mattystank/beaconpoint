@@ -1,5 +1,6 @@
 export type PlayerRuntimeConfig = {
 	deviceId: string;
+	deviceCode?: string;
 	pairingCode?: string;
 	backendBaseUrl: string;
 };
@@ -49,6 +50,7 @@ async function safeJson(res: Response): Promise<any> {
 export function getPlayerRuntimeConfig(): PlayerRuntimeConfig {
 	const urlParams = new URLSearchParams(window.location.search);
 	const queryDeviceId = urlParams.get("deviceId");
+	const deviceCode = urlParams.get("deviceCode") || undefined;
 	const storedDeviceId = localStorage.getItem(DEVICE_ID_KEY);
 	const deviceId = queryDeviceId || storedDeviceId || crypto.randomUUID();
 	const pairingCode = urlParams.get("pairingCode") || undefined;
@@ -58,7 +60,7 @@ export function getPlayerRuntimeConfig(): PlayerRuntimeConfig {
 		localStorage.setItem(DEVICE_ID_KEY, deviceId);
 	}
 
-	return { deviceId, pairingCode, backendBaseUrl };
+	return { deviceId, deviceCode, pairingCode, backendBaseUrl };
 }
 
 export async function bootstrapOrResumeDevice(config: PlayerRuntimeConfig): Promise<DeviceSession> {
@@ -85,16 +87,24 @@ export async function bootstrapOrResumeDevice(config: PlayerRuntimeConfig): Prom
 	}
 
 	if (!config.pairingCode) {
-		throw new Error("Device is not paired yet. Provide ?pairingCode=XXXXXX to bootstrap this device.");
+		throw new Error("Device is not paired yet. Provide ?pairingCode=XXXXXX and optionally ?deviceCode=ABC123.");
 	}
 
-	const bootstrapRes = await fetch(`${config.backendBaseUrl}/devices/bootstrap`, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({
+	const endpoint = config.deviceCode ? `${config.backendBaseUrl}/devices/bootstrap/simple` : `${config.backendBaseUrl}/devices/bootstrap`;
+	const body = config.deviceCode
+		? {
+			device_code: config.deviceCode,
+			pairing_code: config.pairingCode,
+		}
+		: {
 			device_id: config.deviceId,
 			pairing_code: config.pairingCode,
-		}),
+		};
+
+	const bootstrapRes = await fetch(endpoint, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(body),
 	});
 
 	if (!bootstrapRes.ok) {
@@ -103,7 +113,8 @@ export async function bootstrapOrResumeDevice(config: PlayerRuntimeConfig): Prom
 	}
 
 	const bootstrapJson = await safeJson(bootstrapRes);
-	storeDeviceToken(config.deviceId, bootstrapJson.device_token);
+	storeDeviceToken(bootstrapJson.device_id, bootstrapJson.device_token);
+	localStorage.setItem(DEVICE_ID_KEY, bootstrapJson.device_id);
 
 	return {
 		deviceId: bootstrapJson.device_id,

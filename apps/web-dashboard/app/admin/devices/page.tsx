@@ -8,7 +8,11 @@ import {
   Chip,
   CircularProgress,
   Container,
+  FormControl,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Snackbar,
   Stack,
   Table,
@@ -16,9 +20,11 @@ import {
   TableCell,
   TableHead,
   TableRow,
+  TextField,
   Typography,
 } from "@mui/material";
 import { apiRequest } from "../../lib/apiClient";
+import { getApiBaseUrl, getServiceBaseUrl } from "../../lib/auth";
 
 type Device = {
   id: string;
@@ -56,6 +62,21 @@ type CommandHistoryItem = {
   result: Record<string, unknown>;
 };
 
+type ScreenOption = {
+  id: string;
+  location_name?: string;
+  city?: string;
+  state?: string;
+};
+
+type RegisterDeviceResponse = {
+  device_id: string;
+  device_code: string;
+  screen_id: string;
+  pairing_code: string;
+  pairing_code_expires_at: string | null;
+};
+
 function formatDate(value: string | null): string {
   if (!value) return "-";
   const date = new Date(value);
@@ -65,11 +86,16 @@ function formatDate(value: string | null): string {
 
 export default function AdminDevicesPage() {
   const [devices, setDevices] = useState<Device[]>([]);
+  const [screens, setScreens] = useState<ScreenOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [targetVersion, setTargetVersion] = useState<string>("");
   const [history, setHistory] = useState<CommandHistoryItem[]>([]);
+  const [registering, setRegistering] = useState(false);
+  const [registerScreenId, setRegisterScreenId] = useState<string>("");
+  const [registerName, setRegisterName] = useState<string>("");
+  const [registerResult, setRegisterResult] = useState<RegisterDeviceResponse | null>(null);
   const [historyStatusFilter, setHistoryStatusFilter] = useState<string>("all");
   const [historyLoading, setHistoryLoading] = useState(false);
   const [toast, setToast] = useState<{ open: boolean; severity: "success" | "error"; message: string }>({
@@ -87,6 +113,12 @@ export default function AdminDevicesPage() {
     try {
       const data = await apiRequest<Device[]>("/devices");
       setDevices(data);
+
+      const screenData = await apiRequest<ScreenOption[]>("/screens");
+      setScreens(screenData);
+      if (!registerScreenId && screenData.length > 0) {
+        setRegisterScreenId(screenData[0].id);
+      }
 
       const query = historyStatusFilter === "all" ? "" : `?status_filter=${encodeURIComponent(historyStatusFilter)}`;
       const historyData = await apiRequest<CommandHistoryItem[]>(`/devices/commands/history${query}`);
@@ -234,6 +266,37 @@ export default function AdminDevicesPage() {
     }
   };
 
+  const registerDevice = async () => {
+    if (!registerScreenId) {
+      setToast({ open: true, severity: "error", message: "Select a screen first." });
+      return;
+    }
+
+    setRegistering(true);
+    try {
+      const created = await apiRequest<RegisterDeviceResponse>("/devices/register", {
+        method: "POST",
+        body: {
+          screen_id: registerScreenId,
+          name: registerName.trim() || null,
+        },
+      });
+      setRegisterResult(created);
+      setToast({ open: true, severity: "success", message: "Device codes generated." });
+      await load();
+    } catch (error: any) {
+      setToast({ open: true, severity: "error", message: error?.message || "Failed to register device." });
+    } finally {
+      setRegistering(false);
+    }
+  };
+
+  const pairUrl = registerResult
+    ? `${getServiceBaseUrl(3001)}/?deviceCode=${encodeURIComponent(registerResult.device_code)}&pairingCode=${encodeURIComponent(
+        registerResult.pairing_code
+      )}&backendBaseUrl=${encodeURIComponent(getApiBaseUrl())}`
+    : "";
+
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 8 }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
@@ -261,6 +324,50 @@ export default function AdminDevicesPage() {
           <Button variant="outlined" onClick={load} disabled={loading}>Refresh</Button>
         </Stack>
       </Stack>
+
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Typography variant="h6" sx={{ mb: 1, fontWeight: 700 }}>
+          Quick Device Registration
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          Generate two pairing codes from admin, then open the player URL and it will connect automatically.
+        </Typography>
+        <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} alignItems={{ xs: "stretch", md: "center" }}>
+          <FormControl size="small" sx={{ minWidth: 260 }}>
+            <InputLabel>Screen</InputLabel>
+            <Select
+              value={registerScreenId}
+              label="Screen"
+              onChange={(event) => setRegisterScreenId(event.target.value)}
+            >
+              {screens.map((screen) => (
+                <MenuItem key={screen.id} value={screen.id}>
+                  {screen.location_name || "Screen"} ({screen.city || "-"}, {screen.state || "-"})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <TextField
+            size="small"
+            label="Device Name"
+            placeholder="Living Room TV"
+            value={registerName}
+            onChange={(event) => setRegisterName(event.target.value)}
+            sx={{ minWidth: 240 }}
+          />
+          <Button variant="contained" onClick={registerDevice} disabled={registering || !registerScreenId}>
+            {registering ? "Generating..." : "Generate Codes"}
+          </Button>
+        </Stack>
+
+        {registerResult && (
+          <Alert severity="success" sx={{ mt: 2 }}>
+            Device Code: <strong>{registerResult.device_code}</strong> | Pairing Code: <strong>{registerResult.pairing_code}</strong>
+            <br />
+            Open Player URL: {pairUrl}
+          </Alert>
+        )}
+      </Paper>
 
       <Paper sx={{ overflowX: "auto" }}>
         {loading ? (

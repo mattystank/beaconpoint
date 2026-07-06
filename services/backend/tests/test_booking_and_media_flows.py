@@ -284,6 +284,8 @@ def test_device_registry_bootstrap_and_playlist_flow(client: TestClient) -> None
     assert register.status_code == 200
     reg_body = register.json()
     device_id = reg_body["device_id"]
+    assert isinstance(reg_body.get("device_code"), str)
+    assert len(reg_body["device_code"]) == 6
     pairing_code = reg_body["pairing_code"]
 
     bootstrap = client.post(
@@ -309,6 +311,34 @@ def test_device_registry_bootstrap_and_playlist_flow(client: TestClient) -> None
 
     session_after_unpair = client.get("/devices/session", headers=device_auth(device_token))
     assert session_after_unpair.status_code == 403
+
+
+def test_device_bootstrap_simple_two_code_flow(client: TestClient) -> None:
+    admin_token = login_admin(client)
+    screen_id = get_first_screen_id(client, admin_token)
+
+    register = client.post(
+        "/devices/register",
+        headers=device_auth(admin_token),
+        json={"screen_id": screen_id, "name": "Kitchen TV"},
+    )
+    assert register.status_code == 200
+    reg_body = register.json()
+    device_code = reg_body["device_code"]
+    pairing_code = reg_body["pairing_code"]
+
+    bootstrap = client.post(
+        "/devices/bootstrap/simple",
+        json={"device_code": device_code, "pairing_code": pairing_code},
+    )
+    assert bootstrap.status_code == 200
+    body = bootstrap.json()
+    assert body["device_id"] == reg_body["device_id"]
+    assert body["device_code"] == device_code
+
+    session = client.get("/devices/session", headers=device_auth(body["device_token"]))
+    assert session.status_code == 200
+    assert session.json()["device_id"] == reg_body["device_id"]
 
 
 def test_device_command_queue_and_ack_flow(client: TestClient) -> None:

@@ -8,6 +8,7 @@ const TOKEN_KEY = "token";
 const REFRESH_TOKEN_KEY = "refresh_token";
 const USER_KEY = "user";
 const ADMIN_KEY = "admin";
+const CODESPACES_HOST_RE = /^(.*)-(\d+)\.app\.github\.dev$/;
 
 function canUseBrowserApis(): boolean {
   return typeof window !== "undefined";
@@ -48,10 +49,39 @@ export function getRefreshToken(): string | null {
   return window.localStorage.getItem(REFRESH_TOKEN_KEY);
 }
 
-export function getApiBaseUrl(): string {
-  if (!canUseBrowserApis()) return "http://localhost:8010";
+function toCodespacesForwardedBaseUrl(hostname: string, targetPort: number): string | null {
+  const match = hostname.match(CODESPACES_HOST_RE);
+  if (!match) return null;
+  return `https://${match[1]}-${targetPort}.app.github.dev`;
+}
+
+export function getServiceBaseUrl(targetPort: number): string {
+  const envBase = process.env.NEXT_PUBLIC_APP_BASE_URL?.trim();
+  if (envBase) {
+    try {
+      const url = new URL(envBase);
+      url.port = String(targetPort);
+      return url.toString().replace(/\/$/, "");
+    } catch {
+      // Ignore invalid env override and continue with runtime detection.
+    }
+  }
+
+  if (!canUseBrowserApis()) return `http://localhost:${targetPort}`;
+
+  const codespaces = toCodespacesForwardedBaseUrl(window.location.hostname, targetPort);
+  if (codespaces) return codespaces;
+
   const protocol = window.location.protocol === "https:" ? "https" : "http";
-  return `${protocol}://${window.location.hostname}:8010`;
+  return `${protocol}://${window.location.hostname}:${targetPort}`;
+}
+
+export function getApiBaseUrl(): string {
+  const envApiBase = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+  if (envApiBase) {
+    return envApiBase.replace(/\/$/, "");
+  }
+  return getServiceBaseUrl(8010);
 }
 
 export function getStoredUser(): StoredUser | null {
