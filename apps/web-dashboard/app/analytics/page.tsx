@@ -1,9 +1,18 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { Container, Typography, Box, Paper, Grid, Card, CardContent, CircularProgress } from "@mui/material";
+import { apiRequest } from "../lib/apiClient";
+
+type AnalyticsStats = {
+  total_users: number;
+  total_screens: number;
+  total_ads: number;
+  total_bookings: number;
+  total_revenue: number;
+};
 
 export default function AnalyticsPage() {
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<AnalyticsStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -14,11 +23,10 @@ export default function AnalyticsPage() {
   const fetchStats = async () => {
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:8010/analytics");
-      if (!res.ok) throw new Error("Failed to fetch analytics");
-      setStats(await res.json());
-    } catch (err) {
-      setError("Failed to load analytics data.");
+      const data = await apiRequest<AnalyticsStats>("/analytics", { method: "GET" });
+      setStats(data);
+    } catch (err: any) {
+      setError(err?.detail || "Failed to load analytics data.");
     } finally {
       setLoading(false);
     }

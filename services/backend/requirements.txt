@@ -8,3 +8,5 @@ passlib[bcrypt]
 pydantic
 stripe
 python-multipart
+pytest
+boto3

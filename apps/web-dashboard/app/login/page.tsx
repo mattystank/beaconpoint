@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { Container, Typography, Box, Button, TextField, Snackbar, Alert } from "@mui/material";
 import { useRouter } from "next/navigation";
+import { getApiBaseUrl, setAuth } from "../lib/auth";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -9,15 +10,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
-  const [apiHost, setApiHost] = useState("localhost");
-  const [apiProtocol, setApiProtocol] = useState("http");
   const [hydrated, setHydrated] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      setApiHost(window.location.hostname);
-      setApiProtocol(window.location.protocol === "https:" ? "https" : "http");
-      console.log(`Using backend URL: ${apiProtocol}://${apiHost}:8010`); // Debugging log
       setHydrated(true);
     }
   }, []);
@@ -32,25 +29,51 @@ export default function LoginPage() {
       setError("Email and password are required.");
       return;
     }
+    setLoading(true);
     try {
-      // Simulate a successful login without backend
-      console.log("Demo mode: Skipping backend authentication.");
+      const res = await fetch(`${getApiBaseUrl()}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || "Login failed. Check your credentials.");
+      }
+
+      const data = await res.json();
+      setAuth(data.access_token, data.user, data.refresh_token);
+
       setSuccess(true);
       setError("");
+      if (data.user?.role === "admin") {
+        router.push("/admin");
+      } else {
+        router.push("/business");
+      }
     } catch (err) {
-      setError("Login failed. Check your credentials.");
+      setError((err as Error).message || "Login failed. Check your credentials.");
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleAdminLogin = () => {
-    // Simulate admin login and redirect to admin dashboard
-    console.log("Admin logged in");
+    setAuth("demo-admin-token", {
+      id: "demo-admin-id",
+      email: "admin@beaconpoint.local",
+      role: "admin"
+    });
     router.push("/admin");
   };
 
   const handleBusinessLogin = () => {
-    // Simulate business login and redirect to business dashboard
-    console.log("Business logged in");
+    setAuth("demo-owner-token", {
+      id: "demo-owner-id",
+      email: "owner@beaconpoint.local",
+      role: "owner"
+    });
     router.push("/business");
   };
 
@@ -62,8 +85,8 @@ export default function LoginPage() {
         </Typography>
         <TextField label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} required autoFocus InputLabelProps={{ style: { color: '#fff' } }} inputProps={{ style: { color: '#fff', background: '#181a1b' } }} />
         <TextField label="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} required InputLabelProps={{ style: { color: '#fff' } }} inputProps={{ style: { color: '#fff', background: '#181a1b' } }} />
-        <Button type="submit" variant="contained" sx={{ background: '#6f42c1', color: '#fff', fontWeight: 700, mt: 2, borderRadius: 2, ':hover': { background: '#4b2a7b' } }}>
-          Sign In
+        <Button type="submit" variant="contained" disabled={loading} sx={{ background: '#6f42c1', color: '#fff', fontWeight: 700, mt: 2, borderRadius: 2, ':hover': { background: '#4b2a7b' } }}>
+          {loading ? "Signing In..." : "Sign In"}
         </Button>
       </Box>
       <Snackbar open={!!error} autoHideDuration={3000} onClose={() => setError("")}> 

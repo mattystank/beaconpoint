@@ -26,3 +26,16 @@ A two-sided digital signage marketplace SaaS platform.
 2. `npm run dev`
 
 Runs in GitHub Codespaces with minimal setup.
+
+## Backend Database Migrations
+
+The Python backend uses Alembic with a local SQLite default database at `services/backend/beaconpoint.db`.
+
+1. `cd services/backend`
+2. `pip install -r requirements.txt`
+3. `alembic upgrade head`
+
+Environment override:
+
+- `DATABASE_URL` can be set to point to another database.
+- If `DATABASE_URL` is unset, Alembic and runtime default to `sqlite:///./beaconpoint.db`.

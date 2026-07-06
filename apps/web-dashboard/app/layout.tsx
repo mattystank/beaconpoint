@@ -2,6 +2,7 @@ import React from 'react';
 import ThemeProviderClient from './ThemeProviderClient';
 import Navigation from './navigation';
 import GradientLayout from './GradientLayout';
+import AuthGate from './AuthGate';
 
 export const metadata = {
   title: 'Beacon Point',
@@ -15,7 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProviderClient>
           <GradientLayout>
             <Navigation />
-            {children}
+            <AuthGate>{children}</AuthGate>
           </GradientLayout>
         </ThemeProviderClient>
       </body>

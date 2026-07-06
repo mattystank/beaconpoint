@@ -1,9 +1,41 @@
+"use client";
+
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { AppBar, Toolbar, Typography, Button, Box } from "@mui/material";
+import { useRouter } from "next/navigation";
+import { AppBar, Toolbar, Button, Box } from "@mui/material";
 import Logo from "./Logo";
+import { clearAuth, getStoredUser } from "./lib/auth";
+
 export default function Navigation() {
-  // Placeholder: Assume admin if localStorage.admin === 'true'
-  const isAdmin = typeof window !== 'undefined' && window.localStorage?.getItem('admin') === 'true';
+  const router = useRouter();
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    const syncRole = () => {
+      const user = getStoredUser();
+      setRole(user?.role || null);
+    };
+
+    syncRole();
+    window.addEventListener("storage", syncRole);
+    window.addEventListener("bp-auth-changed", syncRole);
+
+    return () => {
+      window.removeEventListener("storage", syncRole);
+      window.removeEventListener("bp-auth-changed", syncRole);
+    };
+  }, []);
+
+  const isAdmin = role === "admin";
+
+  const handleLogout = () => {
+    clearAuth();
+    setRole(null);
+    router.push("/login");
+    router.refresh();
+  };
+
   return (
     <AppBar sx={{ border: '1px solid #000'}} position="static" color="transparent" elevation={0}>
       <Toolbar>
@@ -29,12 +61,41 @@ export default function Navigation() {
               px: 2
             }}>Analytics</Button>
           )}
+          {isAdmin && (
+            <Button component={Link} href="/admin" variant="outlined" sx={{
+              color: '#FFF',
+              borderColor: '#FFF',
+              borderRadius: 3,
+              fontWeight: 700,
+              textTransform: 'none',
+              px: 2
+            }}>Booking Ops</Button>
+          )}
+          {isAdmin && (
+            <Button component={Link} href="/admin/devices" variant="outlined" sx={{
+              color: '#FFF',
+              borderColor: '#FFF',
+              borderRadius: 3,
+              fontWeight: 700,
+              textTransform: 'none',
+              px: 2
+            }}>Fleet</Button>
+          )}
           <Button component={Link} href="/login" variant="text" sx={{
             color: '#FFF',
             fontWeight: 700,
             textTransform: 'none',
             px: 2
-          }}>Login</Button>
+          }}>{role ? "Switch Account" : "Login"}</Button>
+          {role && (
+            <Button onClick={handleLogout} variant="outlined" sx={{
+              color: '#FFF',
+              borderColor: '#FFF',
+              fontWeight: 700,
+              textTransform: 'none',
+              px: 2
+            }}>Logout</Button>
+          )}
         </Box>
       </Toolbar>
     </AppBar>

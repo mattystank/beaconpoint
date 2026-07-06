@@ -1,9 +1,17 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { Container, Typography, Box, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, Snackbar, Alert } from "@mui/material";
+import { Container, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Snackbar, Alert } from "@mui/material";
+import { apiRequest } from "../lib/apiClient";
+
+type ScreenRow = {
+  id: string;
+  location_name: string;
+  venue_type: string;
+  status: string;
+};
 
 export default function ScreensPage() {
-  const [screens, setScreens] = useState([]);
+  const [screens, setScreens] = useState<ScreenRow[]>([]);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -12,11 +20,10 @@ export default function ScreensPage() {
 
   const fetchScreens = async () => {
     try {
-      const res = await fetch("http://localhost:8010/screens");
-      if (!res.ok) throw new Error("Failed to fetch screens");
-      setScreens(await res.json());
-    } catch (err) {
-      setError("Failed to load screens.");
+      const data = await apiRequest<ScreenRow[]>("/screens", { method: "GET" });
+      setScreens(data);
+    } catch (err: any) {
+      setError(err?.detail || "Failed to load screens.");
     }
   };
 
@@ -33,7 +40,7 @@ export default function ScreensPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {screens.map((s: any) => (
+            {screens.map((s) => (
               <TableRow key={s.id}>
                 <TableCell>{s.location_name}</TableCell>
                 <TableCell>{s.venue_type}</TableCell>

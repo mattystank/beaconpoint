@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { Container, Typography, Box, Button, TextField, Snackbar, Alert } from "@mui/material";
+import { apiRequest } from "../lib/apiClient";
 
 export default function BookingPage() {
   const [screenId, setScreenId] = useState("");
@@ -10,6 +11,14 @@ export default function BookingPage() {
   const [totalPrice, setTotalPrice] = useState("");
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+
+  function toIsoRangeStart(day: string): string {
+    return new Date(`${day}T00:00:00`).toISOString();
+  }
+
+  function toIsoRangeEnd(day: string): string {
+    return new Date(`${day}T23:59:59`).toISOString();
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,24 +36,31 @@ export default function BookingPage() {
       return;
     }
     try {
-      const res = await fetch("http://localhost:8010/bookings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          advertiser_id: "demo-user-id",
-          screen_id: screenId,
-          ad_id: adId,
-          start_date: startDate,
-          end_date: endDate,
-          total_price: priceNum,
-          status: "pending"
-        })
-      });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        setError(errData.detail || "Failed to book.");
+      const isoStart = toIsoRangeStart(startDate);
+      const isoEnd = toIsoRangeEnd(endDate);
+
+      const availability = await apiRequest<{ available: boolean; conflicts: Array<{ booking_id: string }> }>(
+        `/screens/${encodeURIComponent(screenId)}/availability?start_date=${encodeURIComponent(isoStart)}&end_date=${encodeURIComponent(isoEnd)}`,
+        { method: "GET" }
+      );
+
+      if (!availability.available) {
+        setError("Selected dates are not available for this screen.");
         return;
       }
+
+      await apiRequest<{ id: string; status: string }>("/bookings", {
+        method: "POST",
+        body: {
+          screen_id: screenId,
+          ad_id: adId,
+          start_date: isoStart,
+          end_date: isoEnd,
+          total_price: priceNum,
+          status: "pending"
+        }
+      });
+
       setSuccess(true);
       setScreenId("");
       setAdId("");
