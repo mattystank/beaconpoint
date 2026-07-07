@@ -286,6 +286,7 @@ def test_device_registry_bootstrap_and_playlist_flow(client: TestClient) -> None
     device_id = reg_body["device_id"]
     assert isinstance(reg_body.get("device_code"), str)
     assert len(reg_body["device_code"]) == 6
+    assert reg_body["device_code"].isdigit()
     pairing_code = reg_body["pairing_code"]
 
     bootstrap = client.post(

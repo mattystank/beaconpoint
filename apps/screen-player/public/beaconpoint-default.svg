@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">BeaconPoint Default Screen</title>
+  <desc id="desc">Default branding screen shown when no ads are scheduled.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0B1220" />
+      <stop offset="50%" stop-color="#111827" />
+      <stop offset="100%" stop-color="#1F2937" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#22D3EE" />
+      <stop offset="100%" stop-color="#38BDF8" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#bg)" />
+  <circle cx="240" cy="130" r="180" fill="#22D3EE" opacity="0.07" />
+  <circle cx="1700" cy="920" r="260" fill="#38BDF8" opacity="0.08" />
+
+  <rect x="260" y="180" width="1400" height="720" rx="36" fill="#0F172A" stroke="#38BDF8" stroke-opacity="0.35" stroke-width="2" />
+
+  <g transform="translate(360, 300)">
+    <rect x="0" y="0" width="92" height="92" rx="18" fill="url(#accent)" />
+    <circle cx="46" cy="46" r="16" fill="#0B1220" />
+    <path d="M46 16L61 46L46 76L31 46Z" fill="#E0F2FE" />
+
+    <text x="126" y="62" font-family="'Segoe UI', Arial, sans-serif" font-size="64" font-weight="700" fill="#E5E7EB">
+      BeaconPoint
+    </text>
+    <text x="126" y="112" font-family="'Segoe UI', Arial, sans-serif" font-size="30" fill="#93C5FD">
+      Default Device Preset
+    </text>
+  </g>
+
+  <text x="360" y="600" font-family="'Segoe UI', Arial, sans-serif" font-size="42" fill="#E5E7EB">
+    This screen is connected and ready.
+  </text>
+  <text x="360" y="660" font-family="'Segoe UI', Arial, sans-serif" font-size="30" fill="#94A3B8">
+    Ads will play automatically when campaigns are scheduled.
+  </text>
+  <text x="360" y="730" font-family="'Segoe UI', Arial, sans-serif" font-size="24" fill="#64748B">
+    Pairing complete. Network and player are working.
+  </text>
+</svg>

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   Alert,
   Box,
@@ -202,6 +203,7 @@ export default function AdminPage() {
           </Typography>
         </Box>
         <Stack direction="row" spacing={1}>
+          <Button component={Link} href="/admin/devices" variant="contained">Devices</Button>
           <Button variant="outlined" onClick={() => bulkTransition("approved")} disabled={loading || selectedIds.size === 0}>Batch Approve</Button>
           <Button variant="outlined" onClick={() => bulkTransition("running")} disabled={loading || selectedIds.size === 0}>Batch Start</Button>
           <Button variant="outlined" onClick={() => bulkTransition("completed")} disabled={loading || selectedIds.size === 0}>Batch Complete</Button>

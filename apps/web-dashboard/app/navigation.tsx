@@ -79,7 +79,7 @@ export default function Navigation() {
               fontWeight: 700,
               textTransform: 'none',
               px: 2
-            }}>Fleet</Button>
+            }}>Devices</Button>
           )}
           <Button component={Link} href="/login" variant="text" sx={{
             color: '#FFF',

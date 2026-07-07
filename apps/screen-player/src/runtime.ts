@@ -26,6 +26,30 @@ const DEVICE_TOKEN_KEY_PREFIX = "bp-device-token:";
 const DEVICE_ID_KEY = "bp-device-id";
 const CODESPACES_HOST_RE = /^(.*)-(\d+)\.app\.github\.dev$/;
 
+function parseCodesFromPath(pathname: string): { deviceCode?: string; pairingCode?: string } {
+	const parts = pathname.split("/").filter(Boolean);
+	if (parts.length >= 3 && parts[0] === "r") {
+		const deviceCode = /^\d{6}$/.test(parts[1]) ? parts[1] : undefined;
+		const pairingCode = /^\d{6}$/.test(parts[2]) ? parts[2] : undefined;
+		return { deviceCode, pairingCode };
+	}
+	return {};
+}
+
+function generateFallbackDeviceId(): string {
+	const rand = Math.random().toString(16).slice(2, 10);
+	return `bp-device-${Date.now()}-${rand}`;
+}
+
+function getOrGenerateDeviceId(queryDeviceId: string | null, storedDeviceId: string | null): string {
+	if (queryDeviceId) return queryDeviceId;
+	if (storedDeviceId) return storedDeviceId;
+	if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+		return crypto.randomUUID();
+	}
+	return generateFallbackDeviceId();
+}
+
 function getDeviceTokenStorageKey(deviceId: string): string {
 	return `${DEVICE_TOKEN_KEY_PREFIX}${deviceId}`;
 }
@@ -52,17 +76,22 @@ export function getPlayerRuntimeConfig(): PlayerRuntimeConfig {
 	const resolveDefaultBackendBaseUrl = (): string => {
 		const hostMatch = window.location.hostname.match(CODESPACES_HOST_RE);
 		if (hostMatch) {
-			return `https://${hostMatch[1]}-8010.app.github.dev`;
+			const currentPort = Number(hostMatch[2]);
+			const inferredPort = currentPort === 3000 || currentPort === 3001 ? 3002 : 8010;
+			return `https://${hostMatch[1]}-${inferredPort}.app.github.dev`;
 		}
-		return `${window.location.protocol}//${window.location.hostname}:8010`;
+		const currentPort = Number(window.location.port || "0");
+		const inferredPort = currentPort === 3000 || currentPort === 3001 ? 3002 : 8010;
+		return `${window.location.protocol}//${window.location.hostname}:${inferredPort}`;
 	};
 
 	const urlParams = new URLSearchParams(window.location.search);
+	const pathCodes = parseCodesFromPath(window.location.pathname);
 	const queryDeviceId = urlParams.get("deviceId") || urlParams.get("id");
-	const deviceCode = urlParams.get("d") || urlParams.get("deviceCode") || undefined;
+	const deviceCode = pathCodes.deviceCode || urlParams.get("d") || urlParams.get("deviceCode") || undefined;
 	const storedDeviceId = localStorage.getItem(DEVICE_ID_KEY);
-	const deviceId = queryDeviceId || storedDeviceId || crypto.randomUUID();
-	const pairingCode = urlParams.get("p") || urlParams.get("pairingCode") || undefined;
+	const deviceId = getOrGenerateDeviceId(queryDeviceId, storedDeviceId);
+	const pairingCode = pathCodes.pairingCode || urlParams.get("p") || urlParams.get("pairingCode") || undefined;
 	const backendBaseUrl = urlParams.get("b") || urlParams.get("backendBaseUrl") || resolveDefaultBackendBaseUrl();
 
 	if (!storedDeviceId || storedDeviceId !== deviceId) {
@@ -132,7 +161,6 @@ export async function bootstrapOrResumeDevice(config: PlayerRuntimeConfig): Prom
 		syncIntervalSeconds: bootstrapJson.sync_interval_seconds || 30,
 		deviceToken: bootstrapJson.device_token,
 	};
-
 }
 
 export async function sendDeviceHeartbeat(config: { backendBaseUrl: string; deviceToken: string }, payload: DeviceHeartbeatPayload): Promise<void> {

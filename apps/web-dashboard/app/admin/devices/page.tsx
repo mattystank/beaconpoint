@@ -24,7 +24,7 @@ import {
   Typography,
 } from "@mui/material";
 import { apiRequest } from "../../lib/apiClient";
-import { getApiBaseUrl, getServiceBaseUrl } from "../../lib/auth";
+import { getServiceBaseUrl } from "../../lib/auth";
 
 type Device = {
   id: string;
@@ -76,6 +76,10 @@ type RegisterDeviceResponse = {
   pairing_code: string;
   pairing_code_expires_at: string | null;
 };
+
+function inferCompanionPlayerPort(): number {
+  return 3000;
+}
 
 function formatDate(value: string | null): string {
   if (!value) return "-";
@@ -291,11 +295,20 @@ export default function AdminDevicesPage() {
     }
   };
 
+  const playerPort = inferCompanionPlayerPort();
   const pairUrl = registerResult
-    ? `${getServiceBaseUrl(3001)}/?deviceCode=${encodeURIComponent(registerResult.device_code)}&pairingCode=${encodeURIComponent(
-        registerResult.pairing_code
-      )}&backendBaseUrl=${encodeURIComponent(getApiBaseUrl())}`
+    ? `${getServiceBaseUrl(playerPort)}/r/${encodeURIComponent(registerResult.device_code)}/${encodeURIComponent(registerResult.pairing_code)}`
     : "";
+
+  const copyPairUrl = async () => {
+    if (!pairUrl) return;
+    try {
+      await navigator.clipboard.writeText(pairUrl);
+      setToast({ open: true, severity: "success", message: "Player URL copied to clipboard." });
+    } catch {
+      setToast({ open: true, severity: "error", message: "Failed to copy URL. Please copy manually." });
+    }
+  };
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4, mb: 8 }}>
@@ -365,6 +378,10 @@ export default function AdminDevicesPage() {
             Device Code: <strong>{registerResult.device_code}</strong> | Pairing Code: <strong>{registerResult.pairing_code}</strong>
             <br />
             Open Player URL: {pairUrl}
+            <br />
+            <Button size="small" variant="outlined" sx={{ mt: 1 }} onClick={copyPairUrl}>
+              Copy URL
+            </Button>
           </Alert>
         )}
       </Paper>

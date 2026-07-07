@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { sendDeviceHeartbeat } from './index';
+import { sendDeviceHeartbeat } from './runtime';
 
 // Import shared types
 import { Advertisement, AdSchedule } from '../../../packages/api/types';
@@ -35,6 +35,47 @@ interface DeviceCommandEnvelope {
 const CACHE_KEY_PREFIX = 'bp-player-cache:';
 const PLAYER_VERSION_KEY = 'bp-player-version';
 const PLAYER_PREVIOUS_VERSION_KEY = 'bp-player-previous-version';
+
+function DefaultPresetGraphic() {
+  return (
+    <svg viewBox="0 0 1600 900" width="100%" height="100%" role="img" aria-label="BeaconPoint default preset">
+      <defs>
+        <linearGradient id="bpBg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#0B1220" />
+          <stop offset="100%" stopColor="#1F2937" />
+        </linearGradient>
+        <linearGradient id="bpAccent" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor="#22D3EE" />
+          <stop offset="100%" stopColor="#38BDF8" />
+        </linearGradient>
+      </defs>
+
+      <rect width="1600" height="900" fill="url(#bpBg)" />
+      <circle cx="220" cy="120" r="160" fill="#22D3EE" opacity="0.08" />
+      <circle cx="1450" cy="780" r="220" fill="#38BDF8" opacity="0.08" />
+      <rect x="190" y="150" width="1220" height="600" rx="28" fill="#0F172A" stroke="#38BDF8" strokeOpacity="0.35" />
+
+      <g transform="translate(290, 270)">
+        <rect x="0" y="0" width="72" height="72" rx="14" fill="url(#bpAccent)" />
+        <circle cx="36" cy="36" r="12" fill="#0B1220" />
+        <path d="M36 12L48 36L36 60L24 36Z" fill="#E0F2FE" />
+        <text x="100" y="50" fill="#E5E7EB" fontFamily="Segoe UI, Arial, sans-serif" fontSize="50" fontWeight="700">
+          BeaconPoint
+        </text>
+        <text x="100" y="92" fill="#93C5FD" fontFamily="Segoe UI, Arial, sans-serif" fontSize="24">
+          Default Device Preset
+        </text>
+      </g>
+
+      <text x="290" y="520" fill="#E5E7EB" fontFamily="Segoe UI, Arial, sans-serif" fontSize="36">
+        Screen connected and ready.
+      </text>
+      <text x="290" y="575" fill="#94A3B8" fontFamily="Segoe UI, Arial, sans-serif" fontSize="26">
+        Content will play automatically when ads are scheduled.
+      </text>
+    </svg>
+  );
+}
 
 function getPlayerVersion(): string {
   return localStorage.getItem(PLAYER_VERSION_KEY) || 'dev-local';
@@ -78,6 +119,7 @@ export const PlayerApp: React.FC<PlayerAppProps> = ({ screenId, backendBaseUrl, 
   const [ads, setAds] = useState<ScheduledAd[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [mediaFailed, setMediaFailed] = useState(false);
   const [checksum, setChecksum] = useState<string | null>(null);
   const [syncNonce, setSyncNonce] = useState(0);
   const [playerVersion, setPlayerVersion] = useState<string>(() => getPlayerVersion());
@@ -147,6 +189,10 @@ export const PlayerApp: React.FC<PlayerAppProps> = ({ screenId, backendBaseUrl, 
       setCurrentIdx((idx) => (idx + 1) % ads.length);
     }, duration);
     return () => clearTimeout(timer);
+  }, [ads, currentIdx]);
+
+  useEffect(() => {
+    setMediaFailed(false);
   }, [ads, currentIdx]);
 
   // Heartbeat with playback details.
@@ -279,19 +325,46 @@ export const PlayerApp: React.FC<PlayerAppProps> = ({ screenId, backendBaseUrl, 
     };
   }, [backendBaseUrl, deviceToken]);
 
-  if (error) return <div style={{ color: 'red' }}>{error}</div>;
-  if (ads.length === 0) return <div>Loading ads...</div>;
+  const renderDefaultPreset = (caption?: string) => (
+    <div style={{ width: '100vw', height: '100vh', background: 'black', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+      <div style={{ width: '100%', height: '100%' }}>
+        <DefaultPresetGraphic />
+      </div>
+      {caption ? (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 20,
+            left: 20,
+            color: 'white',
+            background: 'rgba(0,0,0,0.5)',
+            padding: '8px 10px',
+            borderRadius: 8,
+            fontSize: 14,
+          }}
+        >
+          {caption}
+        </div>
+      ) : null}
+    </div>
+  );
+
+  if (ads.length === 0) return renderDefaultPreset('Default preset active (no ads scheduled yet)');
 
   const currentAd = ads[currentIdx].ad;
+
+  if (error || mediaFailed) {
+    return renderDefaultPreset(error ? 'Using default preset due to playlist error' : 'Using default preset due to media playback issue');
+  }
 
   return (
     <div style={{ width: '100vw', height: '100vh', background: 'black', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       {currentAd.mediaType.startsWith('image') ? (
-        <img src={currentAd.mediaUrl} alt={currentAd.title} style={{ maxWidth: '100%', maxHeight: '100%' }} />
+        <img src={currentAd.mediaUrl} alt={currentAd.title} style={{ maxWidth: '100%', maxHeight: '100%' }} onError={() => setMediaFailed(true)} />
       ) : currentAd.mediaType.startsWith('video') ? (
-        <video src={currentAd.mediaUrl} autoPlay controls={false} style={{ maxWidth: '100%', maxHeight: '100%' }} />
+        <video src={currentAd.mediaUrl} autoPlay controls={false} style={{ maxWidth: '100%', maxHeight: '100%' }} onError={() => setMediaFailed(true)} />
       ) : (
-        <div style={{ color: 'white' }}>Unsupported media type</div>
+        renderDefaultPreset('Unsupported media type - showing default preset')
       )}
     </div>
   );

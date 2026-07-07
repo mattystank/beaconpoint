@@ -162,14 +162,15 @@ def generate_pairing_code() -> str:
 
 
 def build_device_code(device_id: str) -> str:
-    # Deterministic short code derived from device id for simpler pairing UX.
-    return hashlib.sha1(device_id.encode("utf-8")).hexdigest().upper()[:6]
+    # Deterministic 6-digit code derived from device id for easier TV entry/scanning.
+    digest = hashlib.sha256(device_id.encode("utf-8")).hexdigest()
+    return f"{int(digest[:12], 16) % 1_000_000:06d}"
 
 
 def normalize_device_code(device_code: str) -> str:
-    normalized = device_code.strip().upper()
-    if len(normalized) != 6 or any(ch not in "0123456789ABCDEF" for ch in normalized):
-        raise HTTPException(status_code=400, detail="device_code must be a 6-character uppercase hex string")
+    normalized = device_code.strip()
+    if len(normalized) != 6 or not normalized.isdigit():
+        raise HTTPException(status_code=400, detail="device_code must be a 6-digit numeric code")
     return normalized
 
 
